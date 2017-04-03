@@ -1,5 +1,4 @@
 ﻿using GlancesClientSharp.Glances;
-using GlancesClientSharp.UI;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -19,15 +18,12 @@ namespace GlancesClientSharp
         private static Color clrBlue = Color.FromArgb(96, 140, 226);
         private static Color clrRed = Color.FromArgb(221, 80, 79);
         private Thread updater;
+        private static string SrvAdr = "http://bukkitcrafters.de:61208";
+        private static string NetInt = "enp5s0f0";
 
         public frmMain()
         {
             InitializeComponent();
-            server = new Glances.GlancesServer("http://dreadnought.fritz.box:8070");
-            grpCpu.DataEntries.Add(new UI.DataEntry("total", clrBlue, 60));
-            grpRam.DataEntries.Add(new UI.DataEntry("idle", clrRed, 60));
-            grpNetUp.DataEntries.Add(new DataEntry("netUp", clrBlue, 60));
-            grpNetDown.DataEntries.Add(new DataEntry("netDown", clrRed, 60));
             updater = new Thread(() => UpdateValues());
             updater.IsBackground = true;
             updater.Start();
@@ -55,7 +51,7 @@ namespace GlancesClientSharp
                     all = new Glances.Plugins.All() { System = new Glances.Plugins.System(), Ip = new Glances.Plugins.Ip() };
                     cpu = new Glances.Plugins.Cpu();
                     ram = new Glances.Plugins.Memory();
-                    net = new Glances.Plugins.Network[] { new Glances.Plugins.Network() { InterfaceName = "wlx7cdd908f77d9" } };
+                    net = new Glances.Plugins.Network[] { new Glances.Plugins.Network() { InterfaceName = NetInt } };
                 }
 
                 this.Invoke((MethodInvoker)delegate
@@ -64,7 +60,7 @@ namespace GlancesClientSharp
                         lblCpu.Text = string.Format("{0}%", Math.Round((double)cpu.Total, 2));
                         grpRam.DataEntries[0].Data.Add(ram.Percent);
                         lblRam.Text = string.Format("{0} ({1}%)", GetUnitSize(ram.Total - ram.Free), Math.Round((double)ram.Percent, 2));
-                        var netLo = net.First(x => x.InterfaceName == "wlx7cdd908f77d9");
+                        var netLo = net.First(x => x.InterfaceName == NetInt);
                         lblNetUp.Text = string.Format("˄{0}", GetUnitSize(netLo.Tx));
                         lblNetDown.Text = string.Format("˅{0}", GetUnitSize(netLo.Rx));
                         grpNetDown.DataEntries[0].Data.Add(netLo.Rx);
@@ -98,12 +94,6 @@ namespace GlancesClientSharp
             for (; s >= divider; s /= divider, idx++) ;
 
             return string.Format("{0}{1}", Math.Round(s, 2), _units[idx]);
-        }
-
-        private void grpCpu_SizeChanged(object sender, EventArgs e)
-        {
-            foreach (var entry in ((Graph)sender).DataEntries)
-                entry.Data.Capacity = ((Graph)sender).Width;
         }
     }
 }
