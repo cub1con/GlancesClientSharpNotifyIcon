@@ -1,5 +1,7 @@
 ﻿using GlancesClientSharp.Glances;
+using GlancesClientSharp.Glances.Plugins;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -18,65 +20,112 @@ namespace GlancesClientSharp
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new NotifyContext());
-            //UI.frmWindow w = new UI.frmWindow();
-            //Application.Run(w.Form);
         }
 
         public class NotifyContext : ApplicationContext
         {
             GlancesServer server;
-            public Thread updater;
+            private Thread updater;
             string SrvAdr = "http://bukkitcrafters.de:61208";
             string NetInt = "enp5s0f0";
-            private NotifyIcon tray;
-            private string CpuLoad = "";
-            private string RamLoad = "";
-            private string NetUp = "";
-            private string NetDown ="";
-            private string Hostname = "";
-            private string IpAddress = "";
-            private string UpTime = "";
+            private static NotifyIcon tray;
 
+            //CPU
+            MenuItem menuCpu = new MenuItem(); //TopLevel & CpuTotal
+            MenuItem menuCorePhysical = new MenuItem();
+            MenuItem menuCoreLogical = new MenuItem();
+            MenuItem menuQuickLookCpuName = new MenuItem();
+            MenuItem menuQuickLookCpuHz = new MenuItem();
+            MenuItem menuQuickLookCpuHzCurrent = new MenuItem();
+
+            MenuItem menuMemLoad = new MenuItem();
+
+            MenuItem menuFileSystem = new MenuItem();
+            //Net
+            MenuItem menuNetUp = new MenuItem();
+            MenuItem menuNetDown = new MenuItem();
+            MenuItem menuIpAdress = new MenuItem();
+
+            //System
+            MenuItem menuSystem = new MenuItem(); //TopLevel
+            MenuItem menuSystemOsName = new MenuItem();
+            MenuItem menuSystemOsVersion = new MenuItem();
+            MenuItem menuSystemLinuxDistro = new MenuItem();
+            MenuItem menuSystemHostname = new MenuItem();
+            MenuItem menuSystemPlatform = new MenuItem();
+            MenuItem menuSystemHumanReadableName = new MenuItem();
+
+            //UpTime
+            MenuItem menuUpTime = new MenuItem();
+
+            MenuItem menuAbout = new MenuItem("About", ti_about);
+            MenuItem menuExit = new MenuItem("Exit", (sender, e) =>
+            {
+                tray.Visible = false;
+                tray.Dispose();
+                Environment.Exit(0);
+            });
 
             public NotifyContext()
             {
-                
                 server = new Glances.GlancesServer(SrvAdr);
                 updater = new Thread(() => UpdateValues());
                 updater.IsBackground = true;
-                updater.Start();
+
 
                 tray = new NotifyIcon()
                 {
                     Icon = Properties.Resources.favicon,
                     ContextMenu = new ContextMenu(new MenuItem[]
                     {
-                        new MenuItem("CpuLoad: " + CpuLoad + "%"),
-                        new MenuItem("MemLoad: " + RamLoad),
-                        new MenuItem("NetUp: "+ NetUp),
-                        new MenuItem("NetDown: "+ NetDown),
-                        new MenuItem("Hostname: "+ Hostname),
-                        new MenuItem("IpAddress: " + IpAddress),
-                        new MenuItem("UpTime: "+ UpTime),
+                        menuCpu,
+                        menuMemLoad,
+                        menuFileSystem,
+                        menuNetUp,
+                        menuNetDown,
+                        menuIpAdress,
+                        menuUpTime,
+                        menuSystem,
                         new MenuItem("-"),
-                        new MenuItem("About", ti_about),
-                        new MenuItem("Exit", ti_exit),
+                        menuAbout,
+                        menuExit
                     }),
                     Visible = true,
                 };
 
-                
+                menuCpu.MenuItems.AddRange(new MenuItem[]
+                {
+                    menuQuickLookCpuName,
+                    menuCorePhysical,
+                    menuCoreLogical,
+                    menuQuickLookCpuHz,
+                    menuQuickLookCpuHz
+                    
+                });
+
+                menuSystem.MenuItems.AddRange(new MenuItem[]
+                {
+                    menuSystemOsName,
+                    menuSystemOsVersion,
+                    menuSystemLinuxDistro,
+                    menuSystemHostname,
+                    menuSystemPlatform,
+                    menuSystemHumanReadableName,
+                });
+
+                /*
+                menuCpuLoad.MenuItems.AddRange(new MenuItem[]
+                {
+                    new MenuItem("123"),
+                    new MenuItem("456")
+                });
+                */
+                updater.Start();
             }
 
-            public static void ti_about(object sender, EventArgs e)
+            private static void ti_about(object sender, EventArgs e)
             {
                 MessageBox.Show("Created by Cubicon" + Environment.NewLine + "Version: " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString());
-            }
-
-            void ti_exit(object sender, EventArgs e)
-            {
-                tray.Visible = false;
-                Environment.Exit(0);
             }
 
             private void UpdateValues()
@@ -85,45 +134,78 @@ namespace GlancesClientSharp
                 while (true)
                 {
                     sw.Start();
-                    Glances.Plugins.Cpu cpu = null;
-                    Glances.Plugins.Memory ram = null;
-                    Glances.Plugins.Network[] net = null;
-                    Glances.Plugins.All all = null;
+                    Cpu cpu = null;
+                    Memory ram = null;
+                    Network[] net = null;
+                    All all = null;
+                    FileSystem filesystem = null;
+                    QuickLook quicklook = null;
+                    Core core = null;
+                    //try
+                    //{
+                        all = server.PerformQueryHack<All>("all"); //(All)server.PerformQuery<All>();
+                        cpu = all.Cpu; //(Cpu)server.PerformQuery<Cpu>();
+                        ram = (Memory)server.PerformQuery<Memory>();
+                        net = all.Network.ToArray(); //(Network[])server.PerformQuery<Network>();
+                        var fs = server.PerformQueryHack<List<FileSystem>>("fs");
+                        //filesystem = fs[0];
+                        //quicklook = all.QuickLook;
+                        quicklook = server.PerformQueryHack<QuickLook>("quicklook");// (Glances.Plugins.QuickLook)server.PerformQuery<Glances.Plugins.QuickLook>();
+                        //core = all.Core; //(Core)server.PerformQueryHack<Core>("Core");
+                        core = (Glances.Plugins.Core)server.PerformQuery<Glances.Plugins.Core>();
+
+                    //}
+                    //catch (Exception ex)
+                    //{
+                    //    all = new All() { System = new Glances.Plugins.System(), Ip = new Ip() };
+                    //    cpu = new Cpu();
+                    //    ram = new Memory();
+                    //    net = new Network[] { new Network() { InterfaceName = NetInt } };
+                    //    quicklook = new QuickLook();
+                    //    core = new Core();
+                    //    filesystem = new FileSystem() { Size = 0, Used = 0 };
+                    //}
+
+                    //this.Invoke((MethodInvoker)delegate
                     try
                     {
-                        all = (Glances.Plugins.All)server.PerformQuery<Glances.Plugins.All>();
-                        cpu = (Glances.Plugins.Cpu)server.PerformQuery<Glances.Plugins.Cpu>();
-                        ram = (Glances.Plugins.Memory)server.PerformQuery<Glances.Plugins.Memory>();
-                        net = (Glances.Plugins.Network[])server.PerformQuery<Glances.Plugins.Network>();
+                        {
+                            //CPU
+                            menuCpu.Text = string.Format("Cpu {0}%", Math.Round((double)cpu.Total, 2));
+                            menuQuickLookCpuName.Text = string.Format("CPU Model : {0}", quicklook.CpuName);// all.QuickLook.CpuName;
+                            menuCorePhysical.Text = string.Format("Cores : {0}", core.Physical);
+                            menuCoreLogical.Text = string.Format("Threads : {0}", core.Logical);
+                            menuQuickLookCpuHz.Text = string.Format("Max Clock : {0}", GetUnitHz(quicklook.CpuHz/*all.QuickLook.CpuHz*/));
+                            menuQuickLookCpuHzCurrent.Text = string.Format("Current Clock : {0}", GetUnitHz(quicklook.CpuHzCurrent/*all.QuickLook.CpuHzCurrent*/));
+
+                            menuMemLoad.Text = string.Format("MemUsage {0} ({1}%)", GetUnitSize(ram.Total - ram.Free), Math.Round((double)ram.Percent, 2));
+                            var netLo = net.First(x => x.InterfaceName == NetInt);
+                            menuNetUp.Text = string.Format("NetUp ˄{0}", GetUnitSize(netLo.Tx));
+                            menuNetDown.Text = string.Format("NetDown ˅{0}", GetUnitSize(netLo.Rx));
+                            menuIpAdress.Text = "IpAddress " + all.Ip.PublicAddress;
+                            menuUpTime.Text = "UpTime " + all.Uptime;
+                            menuFileSystem.Text = string.Format("FreeSpace: {0}", GetUnitSize(filesystem.Size - filesystem.Used), Math.Round((float)filesystem.Percent, 2));
+
+                            //menuSystem
+                            menuSystem.Text = "System";
+                            menuSystemOsName.Text = "OS : " + all.System.OsName;
+                            menuSystemOsVersion.Text = "Kernel : " + all.System.OsVersion;
+                            menuSystemLinuxDistro.Text = "Distro : " + all.System.LinuxDistro;
+                            menuSystemHostname.Text = "Hostname : " + all.System.Hostname;
+                            menuSystemPlatform.Text = "Platform : " + all.System.Platform;
+                            menuSystemHumanReadableName.Text = "HRN : " + all.System.HumanReadableName;
+
+                        }//);
+                        sw.Stop();
+                        if (sw.ElapsedMilliseconds < 1000)
+                            Thread.Sleep(1000 - (int)sw.ElapsedMilliseconds);
+                        sw.Reset();
                     }
                     catch (Exception ex)
                     {
-                        all = new Glances.Plugins.All() { System = new Glances.Plugins.System(), Ip = new Glances.Plugins.Ip() };
-                        cpu = new Glances.Plugins.Cpu();
-                        ram = new Glances.Plugins.Memory();
-                        net = new Glances.Plugins.Network[] { new Glances.Plugins.Network() { InterfaceName = NetInt } };
+                        MessageBox.Show(string.Format("EXCEPTION: {0} {1}\n{2}", ex.GetType().Name, ex.Message, ex.StackTrace));
+                        Debug.WriteLine(string.Format("EXCEPTION: {0} {1}\n{2}", ex.GetType().Name, ex.Message, ex.StackTrace));
                     }
-
-                    this.Invoke((MethodInvoker)delegate
-                    {
-                        //grpCpu.DataEntries[0].Data.Add(cpu.Total);
-                        CpuLoad = string.Format("{0}%", Math.Round((double)cpu.Total, 2));
-                        //grpRam.DataEntries[0].Data.Add(ram.Percent);
-                        RamLoad = string.Format("{0} ({1}%)", GetUnitSize(ram.Total - ram.Free), Math.Round((double)ram.Percent, 2));
-                        var netLo = net.First(x => x.InterfaceName == NetInt);
-                        NetUp = string.Format("˄{0}", GetUnitSize(netLo.Tx));
-                        NetDown = string.Format("˅{0}", GetUnitSize(netLo.Rx));
-                        //grpNetDown.DataEntries[0].Data.Add(netLo.Rx);
-                        //grpNetUp.DataEntries[0].Data.Add(netLo.Tx);
-                        Hostname = all.System.Hostname;
-                        //lblCovered.Text = TimeSpan.FromSeconds(grpCpu.DataEntries[0].Data.Capacity).ToString();
-                        IpAddress = all.Ip.PublicAddress;
-                        UpTime = all.Uptime;
-                    });
-                    sw.Stop();
-                    if (sw.ElapsedMilliseconds < 1000)
-                        Thread.Sleep(1000 - (int)sw.ElapsedMilliseconds);
-                    sw.Reset();
                 }
             }
 
@@ -143,111 +225,9 @@ namespace GlancesClientSharp
                 int idx = 0;
                 for (; s >= divider; s /= divider, idx++) ;
 
-                return string.Format("{0}{1}", Math.Round(s, 2), _units[idx]);
+                return string.Format("{0} {1}", Math.Round(s, 2), _units[idx]);
             }
         }
 
     }
 }
-
-/*
-using GlancesClientSharp.Glances;
-using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Diagnostics;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Windows.Forms;
-
-namespace GlancesClientSharp
-{
-    public partial class frmMain : Form
-    {
-        GlancesServer server;
-        private static Color clrBlue = Color.FromArgb(96, 140, 226);
-        private static Color clrRed = Color.FromArgb(221, 80, 79);
-        private Thread updater;
-        private static string SrvAdr = "http://bukkitcrafters.de:61208";
-        private static string NetInt = "enp5s0f0";
-
-        public frmMain()
-        {
-            InitializeComponent();
-            updater = new Thread(() => UpdateValues());
-            updater.IsBackground = true;
-            updater.Start();
-        }
-
-        private void UpdateValues()
-        {
-            Stopwatch sw = new Stopwatch();
-            while (true)
-            {
-                sw.Start();
-                Glances.Plugins.Cpu cpu = null;
-                Glances.Plugins.Memory ram = null;
-                Glances.Plugins.Network[] net = null;
-                Glances.Plugins.All all = null;
-                try
-                {
-                    all = (Glances.Plugins.All)server.PerformQuery<Glances.Plugins.All>();
-                    cpu = (Glances.Plugins.Cpu)server.PerformQuery<Glances.Plugins.Cpu>();
-                    ram = (Glances.Plugins.Memory)server.PerformQuery<Glances.Plugins.Memory>();
-                    net = (Glances.Plugins.Network[])server.PerformQuery<Glances.Plugins.Network>();
-                }
-                catch (Exception ex)
-                {
-                    all = new Glances.Plugins.All() { System = new Glances.Plugins.System(), Ip = new Glances.Plugins.Ip() };
-                    cpu = new Glances.Plugins.Cpu();
-                    ram = new Glances.Plugins.Memory();
-                    net = new Glances.Plugins.Network[] { new Glances.Plugins.Network() { InterfaceName = NetInt } };
-                }
-
-                this.Invoke((MethodInvoker)delegate
-                    {
-                        grpCpu.DataEntries[0].Data.Add(cpu.Total);
-                        lblCpu.Text = string.Format("{0}%", Math.Round((double)cpu.Total, 2));
-                        grpRam.DataEntries[0].Data.Add(ram.Percent);
-                        lblRam.Text = string.Format("{0} ({1}%)", GetUnitSize(ram.Total - ram.Free), Math.Round((double)ram.Percent, 2));
-                        var netLo = net.First(x => x.InterfaceName == NetInt);
-                        lblNetUp.Text = string.Format("˄{0}", GetUnitSize(netLo.Tx));
-                        lblNetDown.Text = string.Format("˅{0}", GetUnitSize(netLo.Rx));
-                        grpNetDown.DataEntries[0].Data.Add(netLo.Rx);
-                        grpNetUp.DataEntries[0].Data.Add(netLo.Tx);
-                        lblHost.Text = all.System.Hostname;
-                        lblCovered.Text = TimeSpan.FromSeconds(grpCpu.DataEntries[0].Data.Capacity).ToString();
-                        lblIp.Text = all.Ip.PublicAddress;
-                        lblUptime.Text = all.Uptime;
-                    });
-                sw.Stop();
-                if (sw.ElapsedMilliseconds < 1000)
-                    Thread.Sleep(1000 - (int)sw.ElapsedMilliseconds);
-                sw.Reset();
-            }
-        }
-
-        private static string[] unitSize = new string[] { "B", "KB", "MB", "GB", "TB" };
-        private static string[] unitHz = new string[] { "Hz", "KHz", "MHz", "GHz" };
-        private static string GetUnitSize(long size)
-        {
-            return GetUnit(size, 1024, unitSize);
-        }
-        private static string GetUnitHz(long size)
-        {
-            return GetUnit(size, 1000, unitHz);
-        }
-        private static string GetUnit(long size, int divider, string[] _units)
-        {
-            double s = (double)size;
-            int idx = 0;
-            for (; s >= divider; s /= divider, idx++) ;
-
-            return string.Format("{0}{1}", Math.Round(s, 2), _units[idx]);
-        }
-    }
-}
-*/
