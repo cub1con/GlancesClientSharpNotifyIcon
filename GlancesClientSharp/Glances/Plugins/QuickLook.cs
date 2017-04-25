@@ -24,6 +24,6 @@ namespace GlancesClientSharp.Glances.Plugins
         [JsonProperty(PropertyName = "percpu")]
         public PerCpu[] PerCpu { get; set; }
 
-        public QuickLook() { }
+        //public QuickLook() { }
     }
 }

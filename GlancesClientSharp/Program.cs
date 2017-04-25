@@ -29,6 +29,7 @@ namespace GlancesClientSharp
             string SrvAdr = "http://bukkitcrafters.de:61208";
             string NetInt = "enp5s0f0";
             private static NotifyIcon tray;
+            private bool TrayClicked = false;
 
             //CPU
             MenuItem menuCpu = new MenuItem(); //TopLevel & CpuTotal
@@ -99,8 +100,7 @@ namespace GlancesClientSharp
                     menuCorePhysical,
                     menuCoreLogical,
                     menuQuickLookCpuHz,
-                    menuQuickLookCpuHz
-                    
+                    menuQuickLookCpuHzCurrent
                 });
 
                 menuSystem.MenuItems.AddRange(new MenuItem[]
@@ -110,18 +110,18 @@ namespace GlancesClientSharp
                     menuSystemLinuxDistro,
                     menuSystemHostname,
                     menuSystemPlatform,
-                    menuSystemHumanReadableName,
+                    menuSystemHumanReadableName
                 });
 
-                /*
-                menuCpuLoad.MenuItems.AddRange(new MenuItem[]
-                {
-                    new MenuItem("123"),
-                    new MenuItem("456")
-                });
-                */
+                //tray.MouseClick += tray_Click;
                 updater.Start();
             }
+
+            /*private void tray_Click(object sender, System.EventArgs e)
+            {
+                TrayClicked = true;
+            }*/
+
 
             private static void ti_about(object sender, EventArgs e)
             {
@@ -131,6 +131,14 @@ namespace GlancesClientSharp
             private void UpdateValues()
             {
                 Stopwatch sw = new Stopwatch();
+
+                
+                /*if (TrayClicked == true)
+                {
+
+
+                }*/
+
                 while (true)
                 {
                     sw.Start();
@@ -141,32 +149,32 @@ namespace GlancesClientSharp
                     FileSystem filesystem = null;
                     QuickLook quicklook = null;
                     Core core = null;
-                    //try
-                    //{
+                    try
+                    {
                         all = server.PerformQueryHack<All>("all"); //(All)server.PerformQuery<All>();
                         cpu = all.Cpu; //(Cpu)server.PerformQuery<Cpu>();
                         ram = (Memory)server.PerformQuery<Memory>();
                         net = all.Network.ToArray(); //(Network[])server.PerformQuery<Network>();
                         var fs = server.PerformQueryHack<List<FileSystem>>("fs");
-                        //filesystem = fs[0];
+                        filesystem = fs[0];
                         //quicklook = all.QuickLook;
                         quicklook = server.PerformQueryHack<QuickLook>("quicklook");// (Glances.Plugins.QuickLook)server.PerformQuery<Glances.Plugins.QuickLook>();
                         //core = all.Core; //(Core)server.PerformQueryHack<Core>("Core");
-                        core = (Glances.Plugins.Core)server.PerformQuery<Glances.Plugins.Core>();
+                        core = server.PerformQueryHack<Core>("core");
 
-                    //}
-                    //catch (Exception ex)
-                    //{
-                    //    all = new All() { System = new Glances.Plugins.System(), Ip = new Ip() };
-                    //    cpu = new Cpu();
-                    //    ram = new Memory();
-                    //    net = new Network[] { new Network() { InterfaceName = NetInt } };
-                    //    quicklook = new QuickLook();
-                    //    core = new Core();
-                    //    filesystem = new FileSystem() { Size = 0, Used = 0 };
-                    //}
+                    }
+                    catch (Exception ex)
+                    {
+                        all = new All() { System = new Glances.Plugins.System(), Ip = new Ip() };
+                        cpu = new Cpu();
+                        ram = new Memory();
+                        net = new Network[] { new Network() { InterfaceName = NetInt } };
+                        quicklook = new QuickLook();
+                        core = new Core();
+                        filesystem = new FileSystem() { Size = 0, Used = 0 };
+                    }
 
-                    //this.Invoke((MethodInvoker)delegate
+                    // this.Invoke((MethodInvoker)delegate //Only on Windows Forms
                     try
                     {
                         {
